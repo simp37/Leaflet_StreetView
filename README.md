@@ -6,4 +6,4 @@ Still WiP, a better version will be available soon
 known bugs : 
 - iconAnchor & size needs to be set with right values
 
-!.[.].(leaflet_streetview.gif)
+![](leaflet_streetview.gif)
