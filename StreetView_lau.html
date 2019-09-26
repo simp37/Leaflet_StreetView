@@ -1,0 +1,211 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>Street View Providers Demo</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.3.1/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.3.1/dist/leaflet.js"></script>
+    <script src="StreetViewButtons.js"></script>
+	
+    <style>
+    html,body,#map 
+    {
+         margin: 0; height: 100%; 
+        }
+
+    * { padding: 0; margin: 0; }
+body,html { height: 100%; }
+#map { width: 100%; height: 100%; min-height: 100%; }
+* html #map { height: 100%; }
+
+
+#box {
+			position: absolute; 
+			bottom: 25px; 
+			right: 10px; 
+			background-color: white; 
+			padding: 26px;
+            z-index: 1000;
+            border-radius:15px;
+            box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+		}
+		
+		#box img {
+			margin-right: 5px;
+			cursor: pointer;
+		}
+
+.drag {
+    position: absolute;
+    left: -1px;
+    top: -7px;
+    clip: rect(0, 50px, 62px, 0);
+}
+
+ .pegmanPng[style] {
+    position: absolute!important;
+    left: -1px!important;
+    top: -7px!important;
+    clip: rect(0, 50px, 62px, 0)!important;
+} 
+      </style>
+  </head>
+
+  <body>
+    <div id="map"></div>
+
+    <div id="box">
+            <span class="poi-type">
+                <img class="drag" type="tree" src="http://maps.gstatic.com/tactile/pegman_v3/default/runway-2x.png" alt="Pegman" /></span>
+        </div>
+
+
+
+    <script src="http://code.jquery.com/jquery-1.8.3.min.js"></script>
+	<script src="http://code.jquery.com/ui/1.9.2/jquery-ui.js"></script>
+  <script type="text/javascript">
+    // Create a map
+    var map = L.map('map').setView([55.73801, 37.62599], 2);
+    var dropped = false;
+    var url = 'https://www.google.com/maps?layer=c&cbll={lat},{lon}';
+    
+
+    // Add an OpenStreetMap tile layer
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+
+    const providers = [
+    ['google', 'GSV', 'Google Street View', false,
+      'https://www.google.com/maps?layer=c&cbll={lat},{lon}'],
+    ['bing', 'Bing', 'Bing StreetSide',
+      L.latLngBounds([[25, -168], [71.4, 8.8]]),
+      'https://www.bing.com/maps?cp={lat}~{lon}&lvl=19&style=x&v=2'],
+    ['yandex', 'ЯП', 'Yandex Panoramas',
+      L.latLngBounds([[35.6, 18.5], [72, 180]]),
+      'https://yandex.ru/maps/?panorama%5Bpoint%5D={lon},{lat}'],
+    ['mapillary', 'Mplr', 'Mapillary Photos', false,
+      'https://a.mapillary.com/v3/images?client_id={id}&closeto={lon},{lat}&lookat={lon},{lat}'],
+    ['openstreetcam', 'OSC', 'OpenStreetCam', false,
+      'lat={lat}&lng={lon}&distance=50'],
+    ['mosatlas', 'Мос', 'Панорамы из Атласа Москвы',
+      L.latLngBounds([[55.113, 36.708], [56.041, 38]]),
+      'http://atlas.mos.ru/?lang=ru&z=9&ll={lon}%2C{lat}&pp={lon}%2C{lat}']
+    ];
+
+//     function onMapClick(e) {
+//   marker = new L.marker(e.latlng, {draggable:'true'});
+//   marker.on('dragend', function(event){
+//     var marker = event.target;
+//     var position = marker.getLatLng();
+//     marker.setLatLng(new L.LatLng(position.lat, position.lng),{draggable:'true'});
+//     map.panTo(new L.LatLng(position.lat, position.lng))
+//   });
+//   map.addLayer(marker);
+// };
+
+// map.on('click', onMapClick);
+var poiIcon = L.Icon.extend({
+    options: {
+        // iconSize: [56, 60],
+        // iconAnchor: [18,60],
+        // shadowSize: [22,13],
+        // shadowAnchor: [-31,-19],
+        popupAnchor: [32,-2]
+    }
+});
+
+var pegman = new poiIcon({iconUrl:'http://maps.gstatic.com/tactile/pegman_v3/default/runway-2x.png', className: 'pegmanPng'});
+var droppedPegman;
+$(".drag").draggable({
+    helper: 'clone',
+    containment: 'map',
+	start: function(evt, ui) {
+        console.log("go");
+        if(dropped==true){
+            map.removeLayer(droppedPegman);
+            console.log("pegman removed");
+        }
+        
+		$('#box').fadeTo('fast', 0.6, function() {});
+	},
+	stop: function(evt, ui) {
+        console.log("stop");
+        $('#box').fadeTo('fast', 1.0, function() {});
+
+        var options = {
+						pid: guid(),
+						type: ui.helper.attr('type'),
+						icon: pegman,
+                        draggable: true
+					};
+        dropped=true;
+        console.log(map.containerPointToLatLng([ui.offset.left, ui.offset.top]));
+
+        dropPegman(
+						map.containerPointToLatLng([ui.offset.left, ui.offset.top]),
+						options
+                    );
+        openInNewTab(url, map.containerPointToLatLng([ui.offset.left, ui.offset.top]));
+        // function dropPegman(position, options){
+        //     var droppedPegman = L.marker(position, options).addTo(map);
+        //     droppedPegman.bindPopup("test");
+        //     droppedPegman.on('dragend', function(evt){
+        //         console.log("pegman dropped");
+        //     })
+            
+        // }
+    }
+});
+function dropPegman(position, options){
+            droppedPegman = L.marker(position, options).addTo(map);
+            // var popup = L.popup({ closeButton: false, autoClose: false, closeOnClick: false, closeOnEscapeKey: false });
+            //     L.popup()
+            //         .setLatLng(latlng)
+            //         .setContent("Coordonnées :" + position.toString())
+            //         .openOn(map); //shows longitude and latitude
+            var contentOfPopup = '<dl><dt>Coordinates :'+position.toString()+'</dt>' + '<dd><a onClick="deletePoint(\''+ droppedPegman.options.pid + '\');" href="#">Remove Me!</a></dd>';
+            droppedPegman.bindPopup(contentOfPopup);
+            droppedPegman.on('dragend', function(evt){
+                droppedPegman._popup.setContent('<dl><dt>Coordinates :'+droppedPegman.getLatLng().toString()+'</dt>' + '<dd><a onClick="deletePoint(\''+ droppedPegman + '\');" href="#">Remove Me!</a></dd>');
+                console.log("pegman dropped");
+                position=droppedPegman.getLatLng();
+            // dropped=true;
+            openInNewTab(url, position);
+            
+            })
+            
+        }
+
+        function openInNewTab(url, position) {
+            var lat = position.lat;
+            console.log(lat);
+            var long = position.lng;
+            console.log(long);
+            // url= 'https://www.google.com/maps?layer=c&cbll={lat},{lon}'.replace(/{lat}/ , lat.toString());
+            // url.replace(/{lon}/, long.toString());
+            var url = url
+            .replace(/{lon}/g, L.Util.formatNum(position.lng, 6))
+            .replace(/{lat}/g, L.Util.formatNum(position.lat, 6));
+            console.log('redirecting to streetview at url : '+ url);
+            var win = window.open(url, '_blank');
+            win.focus();
+        }
+
+        // DELETE pegman
+		function deletePoint(pid) {
+            map.removeLayer(droppedPegman);
+            console.log("pegman removed");
+            alert("pegaman removed");
+            dropped=false;
+    }
+
+
+        		// Create a GUID
+		function S4() {
+			return (((1+Math.random())*0x10000)|0).toString(16).substring(1);
+		}
+		function guid() {
+			return (S4()+S4()+"-"+S4()+"-"+S4()+"-"+S4()+"-"+S4()+S4()+S4());
+		}
+  </script>
+  </body>
+</html>
